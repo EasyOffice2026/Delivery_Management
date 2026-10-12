@@ -678,7 +678,7 @@ export default function App() {
                   ))}
                 </select>
               )}
-              {canCreate && (
+              {canCreate && tab !== "hrm" && (
                 <button
                   className="primary"
                   onClick={() => open({ type: "new" })}

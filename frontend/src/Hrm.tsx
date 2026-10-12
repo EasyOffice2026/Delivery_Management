@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   FileDown,
   FileLock2,
+  LockKeyhole,
   Plus,
   RefreshCw,
   ShieldCheck,
@@ -61,6 +62,7 @@ const labels = {
   vehicle: "Car / motorbike assignment",
   operations: "Start aggregator operations",
   pending: "Pending",
+  locked: "Locked",
   in_progress: "In progress",
   completed: "Completed",
   status: "Status",
@@ -160,6 +162,7 @@ const arabic: Record<Label, string> = {
   vehicle: "تخصيص سيارة أو دراجة نارية",
   operations: "بدء العمل مع منصة التوصيل",
   pending: "بانتظار الإجراء",
+  locked: "مقفل",
   in_progress: "قيد الإجراء",
   completed: "مكتمل",
   status: "الحالة",
@@ -495,34 +498,40 @@ export default function Hrm({
               <p>{t("empty")}</p>
             </div>
           ) : (
-            visible.map((e) => (
-              <button
-                key={e.id}
-                className={`hr-person ${selected === e.id ? "selected" : ""}`}
-                disabled={busy}
-                onClick={() => {
-                  setSelected(e.id);
-                  setPane("onboarding");
-                  setError("");
-                  setNotice("");
-                }}
-              >
-                <span className="hr-avatar">{e.name.charAt(0)}</span>
-                <span>
-                  <strong>{e.name}</strong>
-                  <small>
-                    {e.code} ·{" "}
-                    {branches.find((b) => b.id === e.branch_id)?.name}
-                  </small>
-                  <span
-                    className={`hr-chip ${e.current_stage === "active" ? "completed" : "in_progress"}`}
-                  >
-                    {t(e.current_stage)}
+            <div className="hr-list-people">
+              {visible.map((e) => (
+                <button
+                  key={e.id}
+                  className={`hr-person ${selected === e.id ? "selected" : ""}`}
+                  disabled={busy}
+                  onClick={() => {
+                    setSelected(e.id);
+                    setPane("onboarding");
+                    setError("");
+                    setNotice("");
+                  }}
+                >
+                  <span className="hr-avatar">{e.name.charAt(0)}</span>
+                  <span>
+                    <strong>
+                      <bdi>{e.name}</bdi>
+                    </strong>
+                    <small>
+                      <bdi>{e.code}</bdi> ·{" "}
+                      {branches.find((b) => b.id === e.branch_id)?.name}
+                    </small>
+                    <span
+                      className={`hr-chip ${e.current_stage === "active" ? "completed" : "in_progress"}`}
+                    >
+                      {t(e.current_stage)}
+                    </span>
                   </span>
-                </span>
-                <span className="hr-count">{e.completed_stages}/11</span>
-              </button>
-            ))
+                  <span className="hr-count">
+                    <bdi>{e.completed_stages}/11</bdi>
+                  </span>
+                </button>
+              ))}
+            </div>
           )}
         </section>
         <section className="panel hr-detail">
@@ -537,18 +546,23 @@ export default function Hrm({
             </div>
           ) : (
             <>
-              <div className="hr-heading">
+              <div className="hr-summary">
                 <div>
                   <span className="eyebrow">{current.code}</span>
-                  <h2>{current.name}</h2>
+                  <h2>
+                    <bdi>{current.name}</bdi>
+                  </h2>
                   <p>
                     {current.nationality} ·{" "}
                     {branches.find((b) => b.id === current.branch_id)?.name}
                   </p>
                 </div>
-                <span className="hr-count">
-                  {current.completed_stages}/11 {t("progress")}
-                </span>
+                <div className="hr-completion">
+                  <strong>
+                    <bdi>{current.completed_stages}/11</bdi>
+                  </strong>
+                  <span>{t("progress")}</span>
+                </div>
               </div>
               <progress
                 className="hr-progress"
@@ -585,11 +599,12 @@ export default function Hrm({
                     {current.stages.map((s, i) => (
                       <button
                         key={s.stage}
-                        disabled={busy || i > (remaining ?? 0)}
+                        disabled={busy || i > remaining}
+                        aria-pressed={s.stage === stageName}
                         onClick={() => setStageName(s.stage)}
-                        className={`hr-stage ${s.status} ${s.stage === stageName ? "selected" : ""}`}
+                        className={`hr-stage ${s.status} ${i > remaining ? "locked" : ""} ${s.stage === stageName ? "selected" : ""}`}
                       >
-                        <span>
+                        <span className="hr-stage-index">
                           {s.status === "completed" ? (
                             <CheckCircle2 size={16} />
                           ) : (
@@ -597,7 +612,11 @@ export default function Hrm({
                           )}
                         </span>
                         <strong>{t(s.stage)}</strong>
-                        <small>{t(s.status)}</small>
+                        <small className="hr-stage-status">
+                          {i > remaining && <LockKeyhole size={12} />}
+                          {t(s.status)}
+                          {i > remaining && ` · ${t("locked")}`}
+                        </small>
                       </button>
                     ))}
                   </div>
@@ -739,6 +758,7 @@ function EmployeeForm({
           <Field label={t("name")}>
             <input
               name="name"
+              dir="auto"
               required
               maxLength={160}
               defaultValue={employee?.name}
@@ -747,6 +767,7 @@ function EmployeeForm({
           <Field label={t("nationality")}>
             <input
               name="nationality"
+              dir="auto"
               required
               maxLength={80}
               defaultValue={employee?.nationality}
@@ -958,6 +979,7 @@ function StageForm({
         <Field label={t("notes")}>
           <textarea
             name="notes"
+            dir="auto"
             maxLength={1000}
             defaultValue={state.notes}
             rows={3}
