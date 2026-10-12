@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: delivery-management-demo
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    numInstances: 1
+    autoDeployTrigger: "off"
+    healthCheckPath: /api/health
+    disk:
+      name: delivery-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DMS_DB_PATH
+        value: /var/data/delivery.db
+      - key: DMS_COOKIE_SECURE
+        value: "1"
+      - key: DMS_DEMO
+        value: "1"
+      - key: DMS_TRUSTED_ORIGINS
+        sync: false

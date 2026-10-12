@@ -33,6 +33,16 @@ Open `http://127.0.0.1:8010`. The **fictional demo** seeds operations branches, 
 
 For a non-demo installation, run `cd backend && .venv/bin/python -m app.bootstrap` once to create an administrator; configure HTTPS, `DMS_COOKIE_SECURE=1`, and exact `DMS_TRUSTED_ORIGINS`. SQLite/WAL is suitable for one service instance. Multiple replicas require a transactional shared database. Verify backup and restore, monitoring, retention/deletion, malware scanning, encrypted document storage and backups, access review and privacy compliance before entering real passports. Document signature checks are not malware scanning.
 
+## Persistent HTTPS demo hosting
+
+`Dockerfile` builds the frontend and serves it alongside FastAPI from one non-root container. `render.yaml` defines a separate Render demo service with one instance and a 1 GB persistent disk mounted at `/var/data`. SQLite and private document data remain in `/var/data/delivery.db`; do not mount an ephemeral filesystem or scale this service to multiple instances.
+
+Set `DMS_TRUSTED_ORIGINS` to the service's exact HTTPS origin before allowing sign-in. Secure cookies are enabled. Automatic deploys are disabled so a branch push cannot silently replace the reviewed demo. This configuration enables **fictional demo accounts**, not production access; use no real personnel documents.
+
+For an existing demo, create a consistent SQLite backup using the SQLite backup API, transfer it over authenticated SSH, and restore it before sharing the hosted URL. Preserve an untouched backup and compare record/document counts after migration. A service restart must retain the same database and records. Persistent disks are not a substitute for independently verified backups; complete the production safeguards above before real operations.
+
+The smallest paid Render service plus 1 GB storage has a published base price of approximately USD 7.25/month, excluding overages and taxes. This is independent hosting, not a temporary tunnel through a Devin session.
+
 ## Checks
 
 ```bash
