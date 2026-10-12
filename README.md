@@ -12,6 +12,19 @@ Standalone restaurant order management and own-fleet dispatch for Talabat, Keeta
 - Mobile rider view, readiness-checked pickup, delivery confirmation notes and failed-delivery reasons.
 - Cancellation safeguards and operational audit history.
 - Branch/team creation, platform/branch reports and CSV export; KWD amounts stored in fils.
+- Dedicated Delivery HRM: candidates, private documents, sequential onboarding and salary/benefit/deduction terms.
+
+## Delivery HRM
+
+This module belongs only to Delivery Management. It has no code, data, credentials or integration shared with HRM Basic. Administrators can manage all branches; managers can access HR records only in their assigned branches. Kitchen, dispatch and rider users cannot access employee details, salaries or documents.
+
+The onboarding flow is **candidate selection/passport → visa → arrival → medical → Iqama (legal residency) → Civil ID → driving licence → accommodation/housing → mobile/handset → car or motorbike → aggregator operations**. Iqama and housing are separate stages. Each milestone records a status, date, responsible person, notes and stage-specific references. Earlier stages must be completed first. Completed stages may be corrected with an audit trail, but not reopened or dated out of sequence. Candidate selection requires an uploaded passport copy. Civil ID references require 12 digits. Mobile, handset, vehicle and optional aggregator rider accounts cannot be assigned concurrently to two HR employees. These assignments are HR records, not automatic provisioning of dispatch users or platform accounts.
+
+Salary terms record basic monthly salary, an effective date, and itemized monthly or one-off benefits/deductions in integer KWD fils. The indicative monthly net excludes one-off items and cannot be negative. Compensation must be effective by the operations start date. Current terms can be edited; previous values remain in the private audit trail. This is not a payroll engine, payslip, statutory calculation, salary payment or employee-loan system.
+
+Passport/supporting documents accept PDF, PNG and JPEG files with matching MIME, signatures and filename extensions. Limits are 5 MiB per file and 20 files / 25 MiB per employee. Documents live in the Delivery SQLite database and are downloaded only through authenticated, branch-scoped endpoints as attachments with no-store/nosniff headers, never through public static links. Uploads and downloads are audited. Filenames cannot contain paths or control characters; employee detail responses include metadata, not file bytes.
+
+All milestones are manual records, not government issuance or verification. Talabat/Keeta/other platform assignments are not live account activation. Branch transfers, document deletion/retention controls, renewals, accommodation capacity, operational employment changes and payroll processing are not included in this foundation. **Do not upload real passports in the demo.** Production use of personal documents requires encrypted disks/backups, malware scanning, retention/deletion rules, least-privilege/user-lifecycle controls and privacy review; signature checks are not malware scanning.
 
 ## Explicit limitations
 
@@ -104,7 +117,7 @@ Each CSV row represents one order with one item; use manual entry for multi-item
 - Assignments use serialized write transactions and enforce online, branch-scoped riders with only one active job. Reassignment is allowed before pickup.
 - Passwords use salted scrypt; session tokens are opaque and stored hashed, expire after eight hours, and use HttpOnly/SameSite cookies. Mutation requests require an exact trusted Origin and a per-session CSRF header. Sign-in attempts are rate-limited by direct client IP. Configure any reverse proxy carefully; do not blindly trust forwarded headers.
 - Rider responses omit items, kitchen notes, order reference and monetary totals. Riders only see orders currently assigned to them. Kitchen responses omit customer delivery details. Operational changes are recorded in audit history.
-- No file uploads or sensitive proof documents: proof of delivery is a short confirmation note.
+- Proof of delivery is a short confirmation note, not a file upload. Private HR document uploads use separate HR-only endpoints; delivery roles cannot retrieve them.
 
 SQLite/WAL is suitable for the initial single-service deployment. Production readiness requires approved integration testing, backup/restore verification, monitoring, data-retention policy, HTTPS/proxy configuration, user lifecycle controls and operational sign-off. For multiple API replicas, migrate transactions/constraints to a dedicated PostgreSQL database rather than sharing a SQLite file across machines.
 

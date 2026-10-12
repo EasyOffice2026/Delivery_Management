@@ -46,6 +46,7 @@ import {
   type User,
 } from "./api";
 import { ar as arabic, en, type Key } from "./i18n";
+import Hrm from "./Hrm";
 
 type Tab =
   | "dashboard"
@@ -55,6 +56,7 @@ type Tab =
   | "riders"
   | "reports"
   | "settings"
+  | "hrm"
   | "myJobs";
 type Modal =
   | { type: "order"; id: number }
@@ -76,6 +78,7 @@ const icons = {
   riders: Users,
   reports: BarChart3,
   settings: Settings2,
+  hrm: Users,
   myJobs: Bike,
 };
 const nextStage: Record<string, { status: string; label: Key }> = {
@@ -341,6 +344,7 @@ export default function App() {
               "dispatch",
               "riders",
               "reports",
+              "hrm",
               ...(role === "admin" ? ["settings" as Tab] : []),
             ];
   const active = visible.filter(
@@ -1377,6 +1381,15 @@ export default function App() {
                 </section>
               ))}
             </>
+          )}
+
+          {tab === "hrm" && session && (
+            <Hrm
+              session={session}
+              branches={branches}
+              ar={ar}
+              branch={branch}
+            />
           )}
 
           {tab === "settings" && (

@@ -77,8 +77,13 @@ export async function api<T>(
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  const data = await response.json();
+  await checkResponse(response);
+  return (await response.json()) as T;
+}
+
+async function checkResponse(response: Response): Promise<void> {
   if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
     const detail = data.detail;
     throw new ApiError(
       response.status,
@@ -89,7 +94,37 @@ export async function api<T>(
           : "Request failed",
     );
   }
-  return data as T;
+}
+
+export async function uploadFile(
+  path: string,
+  file: File,
+  csrf: string,
+): Promise<void> {
+  const response = await fetch(`/api${path}`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+      "X-CSRF-Token": csrf,
+    },
+    body: file,
+  });
+  await checkResponse(response);
+}
+
+export async function downloadFile(
+  path: string,
+  filename: string,
+): Promise<void> {
+  const response = await fetch(`/api${path}`, { credentials: "same-origin" });
+  await checkResponse(response);
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function kwd(fils: number, ar = false): string {

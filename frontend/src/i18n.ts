@@ -1,4 +1,5 @@
 export const en = {
+  hrm: "Delivery HRM",
   dashboard: "Overview",
   orders: "Orders",
   kitchen: "Kitchen board",
@@ -169,6 +170,7 @@ export const en = {
 
 export type Key = keyof typeof en;
 export const ar: Record<Key, string> = {
+  hrm: "الموارد البشرية للتوصيل",
   dashboard: "نظرة عامة",
   orders: "الطلبات",
   kitchen: "لوحة المطبخ",

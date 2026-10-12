@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from .db import audit, connect, init_db, now
+from .hrm import router as hrm_router
 from .models import (
     Assignment,
     Availability,
@@ -59,8 +60,9 @@ async def security_headers(request: Request, call_next: Any) -> Response:
     response: Response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "same-origin"
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self' https://app.devin.ai"
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self' https://app.devin.ai",
     )
     if request.url.path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-store"
@@ -523,6 +525,8 @@ def add_user(data: UserInput, user: dict[str, Any] = Depends(current_user)) -> d
         "available": 0,
     }
 
+
+app.include_router(hrm_router)
 
 DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 if (DIST / "assets").exists():

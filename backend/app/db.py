@@ -75,6 +75,44 @@ def init_db() -> None:
             CREATE UNIQUE INDEX IF NOT EXISTS jobs_one_active ON jobs(rider_id) WHERE rider_id IS NOT NULL AND status IN ('assigned','picked_up');
             CREATE INDEX IF NOT EXISTS orders_branch ON orders(branch_id, created_at);
             CREATE INDEX IF NOT EXISTS audit_order ON audit(order_id, id);
+            CREATE TABLE IF NOT EXISTS hr_employees (
+                id INTEGER PRIMARY KEY, branch_id INTEGER NOT NULL REFERENCES branches(id),
+                name TEXT NOT NULL, nationality TEXT NOT NULL,
+                passport_number TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                phone TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS hr_stages (
+                employee_id INTEGER NOT NULL REFERENCES hr_employees(id),
+                stage TEXT NOT NULL,
+                status TEXT NOT NULL CHECK(status IN ('in_progress','completed')),
+                occurred_on TEXT NOT NULL, responsible TEXT NOT NULL,
+                notes TEXT NOT NULL DEFAULT '', details TEXT NOT NULL,
+                updated_at TEXT NOT NULL, PRIMARY KEY(employee_id,stage)
+            );
+            CREATE TABLE IF NOT EXISTS hr_compensation (
+                employee_id INTEGER PRIMARY KEY REFERENCES hr_employees(id),
+                basic_fils INTEGER NOT NULL CHECK(basic_fils >= 0),
+                effective_from TEXT NOT NULL, entries TEXT NOT NULL, updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS hr_resources (
+                employee_id INTEGER NOT NULL REFERENCES hr_employees(id),
+                kind TEXT NOT NULL, resource_key TEXT NOT NULL,
+                UNIQUE(kind,resource_key), UNIQUE(employee_id,kind)
+            );
+            CREATE TABLE IF NOT EXISTS hr_documents (
+                id INTEGER PRIMARY KEY, employee_id INTEGER NOT NULL REFERENCES hr_employees(id),
+                kind TEXT NOT NULL, filename TEXT NOT NULL, mime TEXT NOT NULL,
+                size INTEGER NOT NULL, content BLOB NOT NULL,
+                uploaded_by INTEGER NOT NULL REFERENCES users(id), created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS hr_audit (
+                id INTEGER PRIMARY KEY, employee_id INTEGER NOT NULL REFERENCES hr_employees(id),
+                actor_id INTEGER NOT NULL REFERENCES users(id), event TEXT NOT NULL,
+                detail TEXT NOT NULL, created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS hr_employees_branch ON hr_employees(branch_id);
+            CREATE INDEX IF NOT EXISTS hr_documents_employee ON hr_documents(employee_id);
+            CREATE INDEX IF NOT EXISTS hr_audit_employee ON hr_audit(employee_id,id);
         """)
 
 
