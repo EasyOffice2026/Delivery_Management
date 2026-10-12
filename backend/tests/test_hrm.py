@@ -119,7 +119,7 @@ def terms(client: TestClient, employee: int, **kwargs: Any) -> Any:
     )
 
 
-@pytest.mark.parametrize("username", ["kitchen", "dispatch", "rider"])
+@pytest.mark.parametrize("username", ["dispatch", "rider"])
 def test_hrm_denies_delivery_roles(client: TestClient, username: str) -> None:
     sign_in(client)
     employee = create(client)
@@ -135,7 +135,7 @@ def test_hrm_denies_delivery_roles(client: TestClient, username: str) -> None:
     assert terms(client, employee).status_code == 403
     assert milestone(client, employee, "selection").status_code == 403
     assert upload(client, employee).status_code == 403
-    assert "hrm" not in client.get("/api/riders").text
+    assert "passport_number" not in client.get("/api/company/fleet").text
 
 
 def test_hrm_auth_csrf_and_branch_isolation(client: TestClient) -> None:
@@ -325,6 +325,102 @@ def test_hrm_iqama_housing_civil_id_and_assignments(client: TestClient) -> None:
     )
 
 
+def test_hrm_company_assignments_inventory_and_coordinator_privacy(client: TestClient) -> None:
+    sign_in(client)
+    employee = create(client)
+    prepare_operations(client, employee)
+    vehicle = next(v for v in client.get("/api/company/fleet").json() if v["driver_id"] == employee)
+    assert vehicle["assigned"]
+    assert (
+        client.post(
+            f"/api/company/fleet/{vehicle['id']}/status", json={"status": "retired"}
+        ).status_code
+        == 409
+    )
+    sign_in(client, "dispatch")
+    hidden = next(v for v in client.get("/api/company/fleet").json() if v["id"] == vehicle["id"])
+    assert hidden["assigned"] and hidden["driver_id"] is None and hidden["driver_name"] is None
+    sign_in(client)
+    assert (
+        client.post(
+            f"/api/company/fleet/{vehicle['id']}/status", json={"status": "maintenance"}
+        ).status_code
+        == 200
+    )
+    assert (
+        milestone(
+            client,
+            employee,
+            "vehicle",
+            {
+                "vehicle_type": vehicle["vehicle_type"],
+                "vehicle_registration": vehicle["registration"],
+            },
+        ).status_code
+        == 409
+    )
+    assert (
+        client.post(
+            f"/api/company/fleet/{vehicle['id']}/status", json={"status": "available"}
+        ).status_code
+        == 200
+    )
+    assert terms(client, employee).status_code == 200
+    assert (
+        milestone(
+            client,
+            employee,
+            "operations",
+            {"aggregator": "JAHEZ", "aggregator_rider_id": "TEST-ID"},
+        ).status_code
+        == 200
+    )
+    sign_in(client, "dispatch")
+    driver = client.get("/api/company/drivers").json()[0]
+    assert driver["id"] == employee and driver["aggregator"] == "Jahez"
+    assert "passport_number" not in driver
+    visible = next(v for v in client.get("/api/company/fleet").json() if v["id"] == vehicle["id"])
+    assert visible["driver_id"] == employee
+
+
+@pytest.mark.parametrize("status", ["maintenance", "retired"])
+def test_hrm_rejects_unavailable_vehicle_inventory(client: TestClient, status: str) -> None:
+    sign_in(client)
+    employee = create(client)
+    prepare_operations(client, employee)
+    inventory = client.post(
+        "/api/company/fleet",
+        json={"branch_id": 1, "vehicle_type": "car", "registration": "UNAVAILABLE"},
+    ).json()["id"]
+    assert (
+        client.post(f"/api/company/fleet/{inventory}/status", json={"status": status}).status_code
+        == 200
+    )
+    assert (
+        milestone(
+            client,
+            employee,
+            "vehicle",
+            {"vehicle_type": "car", "vehicle_registration": "UNAVAILABLE"},
+        ).status_code
+        == 409
+    )
+    cross_branch = client.post(
+        "/api/company/fleet",
+        json={"branch_id": 2, "vehicle_type": "car", "registration": "OTHER-BRANCH"},
+    )
+    assert cross_branch.status_code == 201
+    assert (
+        milestone(
+            client,
+            employee,
+            "vehicle",
+            {"vehicle_type": "car", "vehicle_registration": "OTHER-BRANCH"},
+        ).status_code
+        == 409
+    )
+
+
 def test_hrm_compensation_fils_and_frequencies(client: TestClient) -> None:
     sign_in(client)
     employee = create(client)
@@ -384,6 +480,13 @@ def test_hrm_operations_need_current_terms_and_valid_documents(client: TestClien
             client, employee, "operations", {"aggregator": "Keeta"}, day="2025-01-11"
         ).status_code
         == 422
+    )
+    assert (
+        milestone(client, employee, "operations", {"aggregator": "Other platform"}).status_code
+        == 422
+    )
+    assert (
+        client.post("/api/company/aggregators", json={"name": "Other platform"}).status_code == 201
     )
     assert (
         milestone(client, employee, "operations", {"aggregator": "Other platform"}).status_code

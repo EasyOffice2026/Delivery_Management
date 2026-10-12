@@ -319,6 +319,7 @@ export default function Hrm({
 }) {
   const t: T = (key) => (ar ? arabic[key] : labels[key]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [aggregators, setAggregators] = useState<string[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [pane, setPane] = useState<Pane>("onboarding");
@@ -331,6 +332,20 @@ export default function Hrm({
   const [version, setVersion] = useState(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  useEffect(() => {
+    let alive = true;
+    void api<{ name: string }[]>("/company/aggregators")
+      .then((items) => {
+        if (alive) setAggregators(items.map((item) => item.name));
+      })
+      .catch((err) => {
+        if (alive)
+          setError(err instanceof Error ? err.message : "Request failed");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [session.csrf]);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -626,6 +641,7 @@ export default function Hrm({
                       state={state}
                       t={t}
                       responsible={session.user.name}
+                      aggregators={aggregators}
                       busy={busy}
                       onSubmit={(data) =>
                         run(() =>
@@ -827,12 +843,14 @@ function StageForm({
   state,
   t,
   responsible,
+  aggregators,
   busy,
   onSubmit,
 }: {
   state: Stage;
   t: T;
   responsible: string;
+  aggregators: string[];
   busy: boolean;
   onSubmit: (data: unknown) => Promise<void>;
 }) {
@@ -844,6 +862,7 @@ function StageForm({
   );
   const completed = status === "completed";
   const details = state.details ?? {};
+  const [aggregator, setAggregator] = useState(details.aggregator ?? "");
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -960,17 +979,19 @@ function StageForm({
           {state.stage === "operations" && (
             <>
               <Field label={t("aggregator")}>
-                <input
+                <select
                   name="detail_aggregator"
-                  list="hr-aggregators"
                   required={completed}
-                  maxLength={80}
-                  defaultValue={details.aggregator}
-                />
-                <datalist id="hr-aggregators">
-                  <option value="Keeta" />
-                  <option value="Talabat" />
-                </datalist>
+                  value={aggregator}
+                  onChange={(event) => setAggregator(event.target.value)}
+                >
+                  <option value="">{t("choose")}</option>
+                  {aggregators.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
               </Field>
               {input("aggregator_rider_id", "riderId")}
             </>

@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import Field, model_validator
 
-from .db import connect, now
+from .db import connect, now, vehicle_key
 from .models import Input
 from .security import check_branch, current_user, require_role
 
@@ -355,7 +355,7 @@ def update_stage(
     if set(details) - allowed:
         raise HTTPException(422, "Details do not belong to this milestone")
     with connect(write=True) as db:
-        employee(db, employee_id, user)
+        row = employee(db, employee_id, user)
         states = {
             r["stage"]: dict(r)
             for r in db.execute("SELECT * FROM hr_stages WHERE employee_id=?", (employee_id,))
@@ -379,14 +379,46 @@ def update_stage(
             raise HTTPException(422, "Milestone dates must follow the onboarding sequence")
         if data.status == "completed":
             validate_completion(db, employee_id, stage, data)
+        if stage == "operations" and data.details.aggregator:
+            aggregator = db.execute(
+                "SELECT name FROM aggregators WHERE name_key=?",
+                (data.details.aggregator.casefold(),),
+            ).fetchone()
+            if not aggregator:
+                raise HTTPException(422, "Add this aggregator in the Aggregators directory first")
+            details["aggregator"] = aggregator["name"]
+        if stage == "vehicle" and data.status == "completed":
+            key = vehicle_key(data.details.vehicle_registration)
+            vehicle = db.execute(
+                "SELECT * FROM fleet_vehicles WHERE registration_key=?", (key,)
+            ).fetchone()
+            if vehicle:
+                if (
+                    vehicle["branch_id"] != row["branch_id"]
+                    or vehicle["vehicle_type"] != data.details.vehicle_type
+                ):
+                    raise HTTPException(
+                        409, "Vehicle branch and type must match the driver assignment"
+                    )
+                if vehicle["status"] != "available":
+                    raise HTTPException(409, "This vehicle is under maintenance or retired")
+            else:
+                db.execute(
+                    "INSERT INTO fleet_vehicles(branch_id,registration,registration_key,vehicle_type,updated_at) VALUES(?,?,?,?,?)",
+                    (
+                        row["branch_id"],
+                        data.details.vehicle_registration,
+                        key,
+                        data.details.vehicle_type,
+                        now(),
+                    ),
+                )
         resources = {
             "mobile": [
                 ("mobile", data.details.mobile_number),
                 ("handset", data.details.handset_id.casefold()),
             ],
-            "vehicle": [
-                ("vehicle", re.sub(r"[\s-]", "", data.details.vehicle_registration).casefold())
-            ],
+            "vehicle": [("vehicle", vehicle_key(data.details.vehicle_registration))],
             "operations": [
                 (
                     "aggregator_account",

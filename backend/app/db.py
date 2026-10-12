@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -9,6 +10,10 @@ from typing import Any
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def vehicle_key(registration: str) -> str:
+    return re.sub(r"[\s-]", "", registration).casefold()
 
 
 @contextmanager
@@ -38,7 +43,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE,
                 name TEXT NOT NULL, password_hash TEXT NOT NULL,
-                role TEXT NOT NULL CHECK(role IN ('admin','manager','kitchen','dispatcher','rider')),
+                role TEXT NOT NULL CHECK(role IN ('admin','manager','dispatcher','rider')),
                 branches TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
                 available INTEGER NOT NULL DEFAULT 0
             );
@@ -49,32 +54,24 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS login_attempts (
                 key TEXT PRIMARY KEY, attempts INTEGER NOT NULL, started REAL NOT NULL
             );
-            CREATE TABLE IF NOT EXISTS orders (
-                id INTEGER PRIMARY KEY, branch_id INTEGER NOT NULL REFERENCES branches(id),
-                source TEXT NOT NULL CHECK(source IN ('talabat','keeta','direct')),
-                external_id TEXT NOT NULL, delivery_mode TEXT NOT NULL CHECK(delivery_mode IN ('platform','own')),
-                status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new','accepted','preparing','ready','handed_over','cancelled')), customer_name TEXT NOT NULL DEFAULT '',
-                phone TEXT NOT NULL DEFAULT '', area TEXT NOT NULL DEFAULT '',
-                address TEXT NOT NULL DEFAULT '', items TEXT NOT NULL, total_fils INTEGER NOT NULL,
-                notes TEXT NOT NULL DEFAULT '', prep_minutes INTEGER NOT NULL,
-                created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_demo INTEGER NOT NULL DEFAULT 0,
-                UNIQUE(branch_id, source, external_id)
-            );
-            CREATE TABLE IF NOT EXISTS jobs (
-                id INTEGER PRIMARY KEY, order_id INTEGER NOT NULL UNIQUE REFERENCES orders(id),
-                rider_id INTEGER REFERENCES users(id), status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','assigned','picked_up','delivered','failed','cancelled')),
-                failure_reason TEXT NOT NULL DEFAULT '', proof TEXT NOT NULL DEFAULT '',
-                updated_at TEXT NOT NULL
-            );
             CREATE TABLE IF NOT EXISTS audit (
-                id INTEGER PRIMARY KEY, order_id INTEGER REFERENCES orders(id),
+                id INTEGER PRIMARY KEY, order_id INTEGER,
                 actor_id INTEGER REFERENCES users(id), event TEXT NOT NULL,
                 detail TEXT NOT NULL, created_at TEXT NOT NULL
             );
-            CREATE INDEX IF NOT EXISTS jobs_rider ON jobs(rider_id, status);
-            CREATE UNIQUE INDEX IF NOT EXISTS jobs_one_active ON jobs(rider_id) WHERE rider_id IS NOT NULL AND status IN ('assigned','picked_up');
-            CREATE INDEX IF NOT EXISTS orders_branch ON orders(branch_id, created_at);
             CREATE INDEX IF NOT EXISTS audit_order ON audit(order_id, id);
+            CREATE TABLE IF NOT EXISTS aggregators (
+                id INTEGER PRIMARY KEY, name TEXT NOT NULL,
+                name_key TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS fleet_vehicles (
+                id INTEGER PRIMARY KEY, branch_id INTEGER NOT NULL REFERENCES branches(id),
+                registration TEXT NOT NULL, registration_key TEXT NOT NULL UNIQUE,
+                vehicle_type TEXT NOT NULL CHECK(vehicle_type IN ('car','motorbike')),
+                make_model TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available','maintenance','retired')),
+                updated_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS hr_employees (
                 id INTEGER PRIMARY KEY, branch_id INTEGER NOT NULL REFERENCES branches(id),
                 name TEXT NOT NULL, nationality TEXT NOT NULL,
@@ -114,6 +111,37 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS hr_documents_employee ON hr_documents(employee_id);
             CREATE INDEX IF NOT EXISTS hr_audit_employee ON hr_audit(employee_id,id);
         """)
+        for name in ("Talabat", "Keeta", "Jahez", "Snoonu"):
+            db.execute(
+                "INSERT OR IGNORE INTO aggregators(name,name_key,created_at) VALUES(?,?,?)",
+                (name, name.casefold(), now()),
+            )
+        for row in db.execute(
+            "SELECT s.details,e.branch_id,e.id AS employee_id FROM hr_stages s JOIN hr_employees e ON e.id=s.employee_id WHERE s.stage='vehicle' AND s.status='completed'"
+        ).fetchall():
+            details = json.loads(row["details"])
+            key = vehicle_key(details["vehicle_registration"])
+            db.execute(
+                "UPDATE hr_resources SET resource_key=? WHERE employee_id=? AND kind='vehicle'",
+                (key, row["employee_id"]),
+            )
+            db.execute(
+                "INSERT OR IGNORE INTO fleet_vehicles(branch_id,registration,registration_key,vehicle_type,updated_at) VALUES(?,?,?,?,?)",
+                (
+                    row["branch_id"],
+                    details["vehicle_registration"],
+                    key,
+                    details["vehicle_type"],
+                    now(),
+                ),
+            )
+        for row in db.execute("SELECT details FROM hr_stages WHERE stage='operations'"):
+            name = json.loads(row["details"]).get("aggregator", "").strip()
+            if name:
+                db.execute(
+                    "INSERT OR IGNORE INTO aggregators(name,name_key,created_at) VALUES(?,?,?)",
+                    (name, name.casefold(), now()),
+                )
 
 
 def audit(

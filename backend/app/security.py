@@ -11,7 +11,7 @@ from fastapi import HTTPException, Request
 
 from .db import connect
 
-ROLES = {"admin", "manager", "kitchen", "dispatcher", "rider"}
+ROLES = {"admin", "manager", "dispatcher", "rider"}
 
 
 def hash_password(password: str) -> str:
@@ -46,7 +46,7 @@ def current_user(request: Request) -> dict[str, Any]:
                             WHERE s.token_hash=? AND s.expires>? AND u.active=1""",
             (token_hash(token), time.time()),
         ).fetchone()
-    if row is None:
+    if row is None or row["role"] not in ROLES:
         raise HTTPException(401, "Please sign in")
     user = dict(row)
     user["branches"] = json.loads(user["branches"])
