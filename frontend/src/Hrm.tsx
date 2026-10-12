@@ -25,13 +25,15 @@ import {
 } from "./api";
 
 const labels = {
-  intro: "From candidate selection to active delivery operations.",
   privacy:
     "Independent Delivery HRM • Admin and branch-manager access only. No connection to HRM Basic.",
   add: "Add candidate",
   candidates: "Candidates & employees",
   active: "Working operations",
   onboarding: "Onboarding",
+  section: "Employee section",
+  milestone: "Onboarding stage",
+  rules: "Onboarding rules",
   compensation: "Salary & terms",
   documents: "Private documents",
   profile: "Profile",
@@ -95,6 +97,7 @@ const labels = {
   deduction: "Deduction",
   amount: "Amount (KWD)",
   entryName: "Benefit / deduction description",
+  entryType: "Entry type",
   frequency: "Frequency",
   monthly: "Monthly",
   one_off: "One-off",
@@ -125,13 +128,15 @@ const labels = {
 } as const;
 type Label = keyof typeof labels;
 const arabic: Record<Label, string> = {
-  intro: "من اختيار المرشح إلى بدء عمليات التوصيل.",
   privacy:
     "موارد بشرية مستقلة للتوصيل • لمدير النظام ومدير الفرع فقط. دون اتصال بنظام الموارد البشرية الأساسي.",
   add: "إضافة مرشح",
   candidates: "المرشحون والموظفون",
   active: "عمليات العمل",
   onboarding: "إجراءات الانضمام",
+  section: "قسم ملف الموظف",
+  milestone: "مرحلة الانضمام",
+  rules: "قواعد إجراءات الانضمام",
   compensation: "الراتب والمستحقات",
   documents: "المستندات الخاصة",
   profile: "الملف الشخصي",
@@ -195,6 +200,7 @@ const arabic: Record<Label, string> = {
   deduction: "خصم",
   amount: "المبلغ (د.ك)",
   entryName: "وصف الميزة أو الخصم",
+  entryType: "نوع البند",
   frequency: "التكرار",
   monthly: "شهري",
   one_off: "لمرة واحدة",
@@ -415,16 +421,18 @@ export default function Hrm({
     current?.current_stage === "active"
       ? stages.length
       : stages.indexOf(current?.current_stage ?? "selection");
+  const selectEmployee = (id: number) => {
+    setSelected(id);
+    setPane("onboarding");
+    setError("");
+    setNotice("");
+  };
   return (
     <div className="hr-workspace">
-      <div className="hr-banner">
-        <ShieldCheck size={20} />
-        <p>{t("privacy")}</p>
-      </div>
       <div className="hr-heading">
-        <div>
-          <h2>{t("candidates")}</h2>
-          <p>{t("intro")}</p>
+        <div className="hr-access-note">
+          <ShieldCheck size={18} />
+          <p>{t("privacy")}</p>
         </div>
         <div className="hr-actions">
           <button
@@ -481,6 +489,28 @@ export default function Hrm({
       )}
       <div className="hr-layout">
         <section className="panel hr-list">
+          <div className="hr-employee-picker">
+            <Field label={t("candidates")}>
+              <select
+                value={
+                  selected !== null && visible.some((e) => e.id === selected)
+                    ? selected
+                    : ""
+                }
+                disabled={busy}
+                onChange={(event) => selectEmployee(Number(event.target.value))}
+              >
+                <option value="" disabled>
+                  {t("choose")}
+                </option>
+                {visible.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.code} · {e.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
           <div className="hr-list-tools">
             <input
               aria-label={t("search")}
@@ -519,12 +549,7 @@ export default function Hrm({
                   key={e.id}
                   className={`hr-person ${selected === e.id ? "selected" : ""}`}
                   disabled={busy}
-                  onClick={() => {
-                    setSelected(e.id);
-                    setPane("onboarding");
-                    setError("");
-                    setNotice("");
-                  }}
+                  onClick={() => selectEmployee(e.id)}
                 >
                   <span className="hr-avatar">{e.name.charAt(0)}</span>
                   <span>
@@ -585,6 +610,29 @@ export default function Hrm({
                 value={current.completed_stages}
                 aria-label={t("progress")}
               />
+              <div className="hr-pane-picker">
+                <Field label={t("section")}>
+                  <select
+                    value={pane}
+                    disabled={busy}
+                    onChange={(event) => setPane(event.target.value as Pane)}
+                  >
+                    {(
+                      [
+                        "onboarding",
+                        "compensation",
+                        "documents",
+                        "profile",
+                        "history",
+                      ] as const
+                    ).map((p) => (
+                      <option key={p} value={p}>
+                        {t(p)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
               <div className="hr-tabs" role="tablist">
                 {(
                   [
@@ -609,52 +657,79 @@ export default function Hrm({
               </div>
               {pane === "onboarding" && (
                 <>
-                  <p className="hr-note">{t("sequential")}</p>
-                  <div className="hr-stage-grid">
-                    {current.stages.map((s, i) => (
-                      <button
-                        key={s.stage}
-                        disabled={busy || i > remaining}
-                        aria-pressed={s.stage === stageName}
-                        onClick={() => setStageName(s.stage)}
-                        className={`hr-stage ${s.status} ${i > remaining ? "locked" : ""} ${s.stage === stageName ? "selected" : ""}`}
+                  <div className="hr-stage-picker">
+                    <Field label={t("milestone")}>
+                      <select
+                        value={stageName}
+                        disabled={busy}
+                        onChange={(event) =>
+                          setStageName(event.target.value as StageName)
+                        }
                       >
-                        <span className="hr-stage-index">
-                          {s.status === "completed" ? (
-                            <CheckCircle2 size={16} />
-                          ) : (
-                            i + 1
-                          )}
-                        </span>
-                        <strong>{t(s.stage)}</strong>
-                        <small className="hr-stage-status">
-                          {i > remaining && <LockKeyhole size={12} />}
-                          {t(s.status)}
-                          {i > remaining && ` · ${t("locked")}`}
-                        </small>
-                      </button>
-                    ))}
+                        {current.stages.map((s, i) => (
+                          <option
+                            key={s.stage}
+                            value={s.stage}
+                            disabled={i > remaining}
+                          >
+                            {i + 1}. {t(s.stage)} · {t(s.status)}
+                            {i > remaining ? ` · ${t("locked")}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
                   </div>
-                  {state && (
-                    <StageForm
-                      key={`${current.id}-${state.stage}-${state.updated_at}`}
-                      state={state}
-                      t={t}
-                      responsible={session.user.name}
-                      aggregators={aggregators}
-                      busy={busy}
-                      onSubmit={(data) =>
-                        run(() =>
-                          api(
-                            `/hrm/employees/${current.id}/stages/${state.stage}`,
-                            data,
-                            session.csrf,
-                          ),
-                        )
-                      }
-                    />
-                  )}
-                  <p className="hr-note">{t("manual")}</p>
+                  <div className="hr-onboarding">
+                    <nav className="hr-stage-grid" aria-label={t("milestone")}>
+                      {current.stages.map((s, i) => (
+                        <button
+                          key={s.stage}
+                          disabled={busy || i > remaining}
+                          aria-pressed={s.stage === stageName}
+                          onClick={() => setStageName(s.stage)}
+                          className={`hr-stage ${s.status} ${i > remaining ? "locked" : ""} ${s.stage === stageName ? "selected" : ""}`}
+                        >
+                          <span className="hr-stage-index">
+                            {s.status === "completed" ? (
+                              <CheckCircle2 size={16} />
+                            ) : (
+                              i + 1
+                            )}
+                          </span>
+                          <strong>{t(s.stage)}</strong>
+                          <small className="hr-stage-status">
+                            {i > remaining && <LockKeyhole size={12} />}
+                            {t(s.status)}
+                            {i > remaining && ` · ${t("locked")}`}
+                          </small>
+                        </button>
+                      ))}
+                    </nav>
+                    {state && (
+                      <StageForm
+                        key={`${current.id}-${state.stage}-${state.updated_at}`}
+                        state={state}
+                        t={t}
+                        responsible={session.user.name}
+                        aggregators={aggregators}
+                        busy={busy}
+                        onSubmit={(data) =>
+                          run(() =>
+                            api(
+                              `/hrm/employees/${current.id}/stages/${state.stage}`,
+                              data,
+                              session.csrf,
+                            ),
+                          )
+                        }
+                      />
+                    )}
+                  </div>
+                  <details className="hr-guidance">
+                    <summary>{t("rules")}</summary>
+                    <p className="hr-note">{t("sequential")}</p>
+                    <p className="hr-note">{t("manual")}</p>
+                  </details>
                 </>
               )}
               {pane === "compensation" && (
@@ -1084,7 +1159,7 @@ function CompensationForm({
         </div>
         {entries.map((entry, i) => (
           <div key={i} className="hr-term">
-            <Field label={t("kind")}>
+            <Field label={t("entryType")}>
               <select
                 value={entry.kind}
                 onChange={(e) =>

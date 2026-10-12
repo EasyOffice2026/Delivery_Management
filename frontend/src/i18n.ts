@@ -7,6 +7,8 @@ export const en = {
   fleet: "Fleet",
   aggregators: "Aggregators",
   hrm: "Delivery HRM",
+  hrmNote:
+    "Manual onboarding, from candidate selection to delivery operations.",
   settings: "Administration",
   loginTitle: "Your drivers. Your fleet. Every platform.",
   loginDesc:
@@ -113,6 +115,8 @@ export const ar: Record<Key, string> = {
   fleet: "الأسطول",
   aggregators: "المنصات",
   hrm: "الموارد البشرية للتوصيل",
+  hrmNote:
+    "إجراءات الانضمام المسجلة يدوياً، من اختيار المرشح إلى بدء عمليات التوصيل.",
   settings: "الإدارة",
   loginTitle: "السائقون والأسطول والمنصات في مكان واحد.",
   loginDesc: "إدارة شركة توصيل تعمل مع طلبات وكيتا وجاهز وسنونو ومنصات أخرى.",

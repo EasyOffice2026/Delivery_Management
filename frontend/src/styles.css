@@ -2,20 +2,20 @@
   display: grid;
   gap: 18px;
 }
-.hr-banner {
+.hr-access-note {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  background: #eaf2e8;
-  border: 1px solid #d9e7d5;
-  border-radius: 12px;
-  color: #355e3e;
+  gap: 8px;
+  flex: 1 1 280px;
+  color: #52665d;
 }
-.hr-banner svg {
+.hr-access-note svg {
   flex-shrink: 0;
 }
-.hr-banner p,
+.hr-access-note p {
+  font-size: 12px;
+  line-height: 1.6;
+}
 .hr-note {
   font-size: 13px;
   line-height: 1.7;
@@ -27,17 +27,8 @@
   gap: 18px;
   flex-wrap: wrap;
 }
-.hr-heading h2 {
-  font-size: 20px;
-  margin-top: 4px;
-  overflow-wrap: anywhere;
-}
 .hr-heading > div {
   min-width: 0;
-}
-.hr-heading p {
-  margin-top: 7px;
-  color: #788480;
 }
 .hr-actions {
   display: flex;
@@ -224,23 +215,23 @@
   border-radius: 8px;
 }
 .hr-tabs {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   border-bottom: 1px solid var(--line);
   margin-bottom: 24px;
   padding-bottom: 16px;
 }
 .hr-tabs button {
-  flex: 1 1 120px;
   min-width: 0;
-  min-height: 44px;
+  min-height: 60px;
   background: #f7f9f6;
   border: 1px solid transparent;
   color: #52665d;
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 13px;
+  font-weight: 650;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -260,19 +251,42 @@
 .hr-note svg {
   vertical-align: middle;
 }
-.hr-stage-grid {
+.hr-employee-picker,
+.hr-pane-picker {
+  display: none;
+}
+.hr-stage-picker {
+  margin-bottom: 18px;
+}
+.hr-onboarding {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-  gap: 12px;
-  margin-bottom: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+}
+.hr-stage-grid {
+  display: none;
+}
+.hr-guidance {
+  margin-top: 20px;
+  color: #52665d;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.hr-guidance summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+.hr-guidance .hr-note {
+  margin: 12px 0 0;
 }
 .hr-stage {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr);
   align-content: start;
   gap: 7px 10px;
-  padding: 16px 14px;
-  min-height: 96px;
+  padding: 12px;
+  min-height: 76px;
   text-align: start;
   border: 1px solid #e2e9e3;
   border-radius: 9px;
@@ -482,8 +496,24 @@
   .hr-term {
     grid-template-columns: minmax(0, 1fr);
   }
-  .hr-tabs button {
-    flex-basis: calc(50% - 4px);
+  .hr-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container hr-detail (min-width: 650px) {
+  .hr-onboarding {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+  .hr-stage-picker {
+    display: none;
+  }
+  .hr-stage-grid {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 2px;
   }
 }
 @media (max-width: 1100px) {
@@ -513,6 +543,18 @@
   }
   .hr-actions > .primary {
     flex: 1;
+  }
+  .hr-employee-picker,
+  .hr-pane-picker {
+    display: grid;
+    margin-bottom: 16px;
+  }
+  .hr-list-people,
+  .hr-tabs {
+    display: none;
+  }
+  .hr-summary {
+    gap: 12px;
   }
   .hr-milestone {
     padding: 16px;

@@ -66,11 +66,11 @@ type Aggregator = {
 };
 
 const tabs: { key: Tab; icon: typeof Users }[] = [
+  { key: "hrm", icon: ShieldCheck },
   { key: "dashboard", icon: LayoutDashboard },
   { key: "drivers", icon: Users },
   { key: "fleet", icon: Truck },
   { key: "aggregators", icon: Globe2 },
-  { key: "hrm", icon: ShieldCheck },
   { key: "settings", icon: Settings2 },
 ];
 const roleLabel: Record<Role, Key> = {
@@ -499,19 +499,23 @@ export default function App() {
         <div className="content company-workspace">
           <div className="page-head">
             <div>
-              <span className="eyebrow">{t("subtitle")}</span>
+              {tab !== "hrm" && (
+                <span className="eyebrow">{t("subtitle")}</span>
+              )}
               <h1>{t(tab)}</h1>
               <p>
                 {t(
-                  tab === "dashboard"
-                    ? "overviewNote"
-                    : tab === "fleet"
-                      ? "fleetNote"
-                      : tab === "aggregators"
-                        ? "platformNote"
-                        : tab === "settings"
-                          ? "administrationNote"
-                          : "manualNotice",
+                  tab === "hrm"
+                    ? "hrmNote"
+                    : tab === "dashboard"
+                      ? "overviewNote"
+                      : tab === "fleet"
+                        ? "fleetNote"
+                        : tab === "aggregators"
+                          ? "platformNote"
+                          : tab === "settings"
+                            ? "administrationNote"
+                            : "manualNotice",
                 )}
               </p>
             </div>
@@ -532,10 +536,12 @@ export default function App() {
               </div>
             )}
           </div>
-          <div className="manual-banner">
-            <ShieldCheck size={18} />
-            <span>{t("manualNotice")}</span>
-          </div>
+          {tab !== "hrm" && (
+            <div className="manual-banner">
+              <ShieldCheck size={18} />
+              <span>{t("manualNotice")}</span>
+            </div>
+          )}
           {error && (
             <div className="error" role="alert">
               {error}
