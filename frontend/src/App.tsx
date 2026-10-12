@@ -427,7 +427,9 @@ export default function App() {
             {visibleTabs.map(({ key, icon: Icon }) => (
               <button
                 key={key}
+                type="button"
                 className={tab === key ? "active" : ""}
+                aria-current={tab === key ? "page" : undefined}
                 onClick={() => navigate(key)}
               >
                 <Icon size={19} />
@@ -575,13 +577,29 @@ export default function App() {
                   <button
                     key={label}
                     className="stat company-stat"
+                    data-kind={target}
                     onClick={() =>
                       navigate(target === "hrm" && !canHrm ? "drivers" : target)
                     }
                   >
-                    <small>{t(label)}</small>
-                    <strong>{count}</strong>
-                    <ArrowRight size={17} />
+                    <span className="stat-top">
+                      <span className="stat-icon">
+                        {target === "drivers" ? (
+                          <Users size={21} />
+                        ) : target === "hrm" ? (
+                          <ShieldCheck size={21} />
+                        ) : target === "fleet" ? (
+                          <Truck size={21} />
+                        ) : (
+                          <Globe2 size={21} />
+                        )}
+                      </span>
+                      <ArrowRight size={17} className="stat-arrow" />
+                    </span>
+                    <span className="stat-metric">
+                      <strong>{count}</strong>
+                      <small>{t(label)}</small>
+                    </span>
                   </button>
                 ))}
               </div>
